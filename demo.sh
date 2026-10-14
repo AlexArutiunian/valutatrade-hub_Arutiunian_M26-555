@@ -9,11 +9,11 @@ login $user_name demo123
 show-portfolio
 update-rates
 show-rates
-get-rate USD EUR
-buy EUR 50
+get-rate USD BTC
+buy BTC 0.0001
 show-portfolio
-sell EUR 10
+sell BTC 0.00002
 show-portfolio
-buy EUR 999999
+buy BTC 999999
 exit
 DEMO
