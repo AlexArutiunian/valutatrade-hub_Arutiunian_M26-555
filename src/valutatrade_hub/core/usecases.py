@@ -48,9 +48,7 @@ def _load_rates() -> tuple[dict[str, float], dict[str, object]]:
     if not isinstance(raw_updated_at, dict):
         raw_updated_at = {}
 
-    updated_at = {
-        str(code).upper(): value for code, value in raw_updated_at.items()
-    }
+    updated_at = {str(code).upper(): value for code, value in raw_updated_at.items()}
     return rates, updated_at
 
 
