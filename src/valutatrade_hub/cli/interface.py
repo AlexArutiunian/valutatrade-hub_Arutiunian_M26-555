@@ -89,13 +89,13 @@ class Interface:
     def cmd_buy(self, args: list[str]) -> None:
         """Покупает валюту"""
         self._need_args(args, 2, "buy <currency> <amount>")
-        cost = buy(self._portfolio(), args[0], float(args[1]))
+        cost = buy(self._portfolio(), args[0], args[1])
         print(f"Покупка выполнена, списано ${cost:.2f}")
 
     def cmd_sell(self, args: list[str]) -> None:
         """Продаёт валюту"""
         self._need_args(args, 2, "sell <currency> <amount>")
-        revenue = sell(self._portfolio(), args[0], float(args[1]))
+        revenue = sell(self._portfolio(), args[0], args[1])
         print(f"Продажа выполнена, получено ${revenue:.2f}")
 
     def cmd_get_rate(self, args: list[str]) -> None:

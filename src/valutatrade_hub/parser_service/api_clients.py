@@ -68,8 +68,10 @@ class CoinGeckoClient(BaseApiClient):
                 params={"ids": ids, "vs_currencies": "usd"},
                 timeout=REQUEST_TIMEOUT,
             )
-        except requests.RequestException as error:
-            raise ApiRequestError(f"CoinGecko недоступен: {error}") from error
+        except requests.RequestException:
+            raise ApiRequestError(
+                "CoinGecko недоступен. Проверьте соединение и повторите запрос"
+            ) from None
 
         data = self._json(response)
         rates = {}
@@ -102,8 +104,10 @@ class ExchangeRateApiClient(BaseApiClient):
                 EXCHANGE_RATE_URL.format(api_key=EXCHANGE_RATE_API_KEY),
                 timeout=REQUEST_TIMEOUT,
             )
-        except requests.RequestException as error:
-            raise ApiRequestError(f"ExchangeRate-API недоступен: {error}") from error
+        except requests.RequestException:
+            raise ApiRequestError(
+                "ExchangeRate-API недоступен. Проверьте соединение и повторите запрос"
+            ) from None
 
         data = self._json(response)
         conversion_rates = data.get("conversion_rates")

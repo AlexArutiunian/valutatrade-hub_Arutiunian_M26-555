@@ -11,7 +11,7 @@ from .exceptions import AuthenticationError, CurrencyNotFoundError
 from .models import Portfolio, User
 
 
-def _positive_amount(amount: float) -> float:
+def _positive_amount(amount: float | str) -> float:
     try:
         value = float(amount)
     except (TypeError, ValueError) as error:
@@ -25,29 +25,45 @@ def _positive_amount(amount: float) -> float:
     return value
 
 
-def _load_rates() -> tuple[dict[str, float], dict[str, str]]:
+def _load_rates() -> tuple[dict[str, float], dict[str, object]]:
     data = DatabaseManager().load_rates()
-    rates = {
-        code.upper(): float(rate) for code, rate in data.get("rates", {}).items()
-    }
-    updated_at = {
-        code.upper(): value
-        for code, value in data.get("rate_updated_at", {}).items()
-    }
+    raw_rates = data.get("rates", {})
 
-    if not rates:
+    if not isinstance(raw_rates, dict) or not raw_rates:
         raise CurrencyNotFoundError("Кэш курсов пуст. Выполните update-rates")
 
+    rates = {}
+    try:
+        for code, rate in raw_rates.items():
+            value = float(rate)
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError
+            rates[str(code).upper()] = value
+    except (TypeError, ValueError) as error:
+        raise CurrencyNotFoundError(
+            "Кэш курсов повреждён. Выполните update-rates"
+        ) from error
+
+    raw_updated_at = data.get("rate_updated_at", {})
+    if not isinstance(raw_updated_at, dict):
+        raw_updated_at = {}
+
+    updated_at = {
+        str(code).upper(): value for code, value in raw_updated_at.items()
+    }
     return rates, updated_at
 
 
-def _rate_is_stale(updated_at: str | None) -> bool:
-    if not updated_at:
+def _rate_is_stale(updated_at: object) -> bool:
+    if not isinstance(updated_at, str):
         return True
 
     try:
         updated = datetime.fromisoformat(updated_at)
-    except ValueError:
+    except (TypeError, ValueError):
+        return True
+
+    if updated.tzinfo is None or updated.utcoffset() is None:
         return True
 
     age = (datetime.now(timezone.utc) - updated).total_seconds()
@@ -97,7 +113,7 @@ def get_rate(from_currency: str, to_currency: str) -> tuple[float, bool]:
 
 
 @log_action("buy")
-def buy(portfolio: Portfolio, currency: str, amount: float) -> float:
+def buy(portfolio: Portfolio, currency: str, amount: float | str) -> float:
     """Покупает валюту за USD"""
     amount = _positive_amount(amount)
     code = currency.upper()
@@ -117,7 +133,7 @@ def buy(portfolio: Portfolio, currency: str, amount: float) -> float:
 
 
 @log_action("sell")
-def sell(portfolio: Portfolio, currency: str, amount: float) -> float:
+def sell(portfolio: Portfolio, currency: str, amount: float | str) -> float:
     """Продаёт валюту за USD"""
     amount = _positive_amount(amount)
     code = currency.upper()
