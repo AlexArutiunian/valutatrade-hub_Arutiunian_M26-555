@@ -1,0 +1,37 @@
+[project]
+name = "valutatrade-hub-arutiunian-m26-555"
+version = "0.1.0"
+description = "Console service for a training currency portfolio"
+authors = [
+    { name = "Alexandr Arutiunian" },
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "prettytable>=3.16.0",
+    "requests>=2.32.5",
+]
+
+[project.scripts]
+valuta = "valutatrade_hub.main:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/valutatrade_hub"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [".venv", "dist", "build", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []
