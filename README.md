@@ -110,4 +110,4 @@ make lint
 
 ## Демонстрация
 
-[Запись работы в Asciinema](https://asciinema.org/a/HcN1YiJp2azo9SeO)
+[Запись работы в Asciinema](https://asciinema.org/a/qMj3uPnjX26Z9yUk)
