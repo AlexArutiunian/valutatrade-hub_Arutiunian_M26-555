@@ -52,10 +52,10 @@ register alex password123
 login alex password123
 show-portfolio
 update-rates
-get-rate USD EUR
-buy EUR 50
+get-rate USD BTC
+buy BTC 0.0001
 show-portfolio
-sell EUR 10
+sell BTC 0.00002
 show-portfolio
 ```
 
