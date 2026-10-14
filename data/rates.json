@@ -2,6 +2,7 @@
   "base": "USD",
   "updated_at": null,
   "last_refresh": null,
+  "rate_updated_at": {},
   "rates": {
     "USD": 1.0,
     "EUR": 0.86,

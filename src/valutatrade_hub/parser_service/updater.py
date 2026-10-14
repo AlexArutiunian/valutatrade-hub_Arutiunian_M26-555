@@ -25,15 +25,15 @@ class RatesUpdater:
         """Обновляет кэш и историю курсов"""
         current = self.storage.read(self.settings.rates_file, {})
         rates = dict(current.get("rates", {}))
+        rate_updated_at = dict(current.get("rate_updated_at", {}))
         errors = []
-        has_updates = False
+        updated_codes = set()
 
         for client in self.clients:
             try:
                 fresh_rates = client.fetch_rates()
-                if fresh_rates:
-                    rates.update(fresh_rates)
-                    has_updates = True
+                rates.update(fresh_rates)
+                updated_codes.update(fresh_rates)
 
                 logger.info(
                     "%s: обновлено курсов %s",
@@ -44,15 +44,21 @@ class RatesUpdater:
                 errors.append(str(error))
                 logger.warning("%s", error)
 
-        if not has_updates:
+        if not updated_codes:
             raise ApiRequestError("Не удалось обновить курсы ни из одного источника")
 
-        rates[BASE_CURRENCY] = 1.0
         now = datetime.now(timezone.utc).isoformat()
+        rates[BASE_CURRENCY] = 1.0
+        updated_codes.add(BASE_CURRENCY)
+
+        for code in updated_codes:
+            rate_updated_at[code] = now
+
         payload = {
             "base": BASE_CURRENCY,
             "updated_at": now,
             "last_refresh": now,
+            "rate_updated_at": dict(sorted(rate_updated_at.items())),
             "rates": dict(sorted(rates.items())),
         }
 

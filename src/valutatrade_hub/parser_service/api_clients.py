@@ -1,5 +1,7 @@
 """Клиенты внешних API курсов"""
 
+import math
+
 import requests
 
 from valutatrade_hub.core.exceptions import ApiRequestError
@@ -31,9 +33,26 @@ class BaseApiClient:
             raise ApiRequestError(f"Ошибка API: HTTP {response.status_code}")
 
         try:
-            return response.json()
+            data = response.json()
         except ValueError as error:
             raise ApiRequestError("API вернул некорректный JSON") from error
+
+        if not isinstance(data, dict):
+            raise ApiRequestError("API вернул неожиданный ответ")
+
+        return data
+
+    @staticmethod
+    def _positive_number(value, source: str) -> float:
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as error:
+            raise ApiRequestError(f"{source} вернул некорректный курс") from error
+
+        if not math.isfinite(number) or number <= 0:
+            raise ApiRequestError(f"{source} вернул некорректный курс")
+
+        return number
 
 
 class CoinGeckoClient(BaseApiClient):
@@ -56,9 +75,16 @@ class CoinGeckoClient(BaseApiClient):
         rates = {}
 
         for code, coin_id in CRYPTO_ID_MAP.items():
-            usd_price = data.get(coin_id, {}).get("usd")
-            if usd_price:
-                rates[code] = 1 / float(usd_price)
+            coin_data = data.get(coin_id)
+            if coin_data is None:
+                continue
+            if not isinstance(coin_data, dict):
+                raise ApiRequestError("CoinGecko вернул неожиданный ответ")
+
+            usd_price = coin_data.get("usd")
+            if usd_price is not None:
+                price = self._positive_number(usd_price, "CoinGecko")
+                rates[code] = 1 / price
 
         return rates
 
@@ -85,8 +111,12 @@ class ExchangeRateApiClient(BaseApiClient):
         if not isinstance(conversion_rates, dict):
             raise ApiRequestError("ExchangeRate-API вернул неожиданный ответ")
 
-        return {
-            code: float(conversion_rates[code])
-            for code in FIAT_CURRENCIES
-            if code in conversion_rates
-        }
+        rates = {}
+        for code in FIAT_CURRENCIES:
+            if code in conversion_rates:
+                rates[code] = self._positive_number(
+                    conversion_rates[code],
+                    "ExchangeRate-API",
+                )
+
+        return rates

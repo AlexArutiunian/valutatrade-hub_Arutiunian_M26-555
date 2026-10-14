@@ -1,5 +1,6 @@
 """Основные операции приложения"""
 
+import math
 from datetime import datetime, timezone
 
 from valutatrade_hub.infra.database import DatabaseManager
@@ -16,29 +17,41 @@ def _positive_amount(amount: float) -> float:
     except (TypeError, ValueError) as error:
         raise ValueError("Сумма должна быть числом") from error
 
+    if not math.isfinite(value):
+        raise ValueError("Сумма должна быть конечным числом")
     if value <= 0:
         raise ValueError("Сумма должна быть больше нуля")
 
     return value
 
 
-def _load_rates() -> tuple[dict[str, float], bool]:
+def _load_rates() -> tuple[dict[str, float], dict[str, str]]:
     data = DatabaseManager().load_rates()
     rates = {
         code.upper(): float(rate) for code, rate in data.get("rates", {}).items()
+    }
+    updated_at = {
+        code.upper(): value
+        for code, value in data.get("rate_updated_at", {}).items()
     }
 
     if not rates:
         raise CurrencyNotFoundError("Кэш курсов пуст. Выполните update-rates")
 
-    updated_at = data.get("updated_at")
-    if not updated_at:
-        return rates, True
+    return rates, updated_at
 
-    updated = datetime.fromisoformat(updated_at)
+
+def _rate_is_stale(updated_at: str | None) -> bool:
+    if not updated_at:
+        return True
+
+    try:
+        updated = datetime.fromisoformat(updated_at)
+    except ValueError:
+        return True
+
     age = (datetime.now(timezone.utc) - updated).total_seconds()
-    stale = age > SettingsLoader().rates_ttl
-    return rates, stale
+    return age > SettingsLoader().rates_ttl
 
 
 def register(username: str, password: str) -> User:
@@ -69,7 +82,7 @@ def login(username: str, password: str) -> User:
 
 def get_rate(from_currency: str, to_currency: str) -> tuple[float, bool]:
     """Возвращает курс одной валюты к другой"""
-    rates, stale = _load_rates()
+    rates, updated_at = _load_rates()
     source = from_currency.upper()
     target = to_currency.upper()
 
@@ -78,7 +91,9 @@ def get_rate(from_currency: str, to_currency: str) -> tuple[float, bool]:
     if target not in rates:
         raise CurrencyNotFoundError(f"Неизвестная валюта: {target}")
 
-    return rates[target] / rates[source], stale
+    source_stale = source != "USD" and _rate_is_stale(updated_at.get(source))
+    target_stale = target != "USD" and _rate_is_stale(updated_at.get(target))
+    return rates[target] / rates[source], source_stale or target_stale
 
 
 @log_action("buy")
@@ -92,7 +107,7 @@ def buy(portfolio: Portfolio, currency: str, amount: float) -> float:
 
     rate, stale = get_rate("USD", code)
     if stale:
-        raise ValueError("Курсы устарели. Выполните update-rates")
+        raise ValueError("Курс устарел. Выполните update-rates")
 
     cost_usd = amount / rate
     portfolio.add_currency("USD").withdraw(cost_usd)
@@ -112,7 +127,7 @@ def sell(portfolio: Portfolio, currency: str, amount: float) -> float:
 
     rate, stale = get_rate("USD", code)
     if stale:
-        raise ValueError("Курсы устарели. Выполните update-rates")
+        raise ValueError("Курс устарел. Выполните update-rates")
 
     revenue_usd = amount / rate
     portfolio.add_currency(code).withdraw(amount)

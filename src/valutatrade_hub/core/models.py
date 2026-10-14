@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 from datetime import datetime, timezone
 
@@ -103,9 +104,14 @@ class Wallet:
     def balance(self, value: float) -> None:
         if not isinstance(value, (int, float)) or isinstance(value, bool):
             raise ValueError("Баланс должен быть числом")
+
+        value = float(value)
+        if not math.isfinite(value):
+            raise ValueError("Баланс должен быть конечным числом")
         if value < 0:
             raise ValueError("Баланс не может быть отрицательным")
-        self.__balance = float(value)
+
+        self.__balance = value
 
     def deposit(self, amount: float) -> None:
         """Пополняет кошелёк"""
@@ -129,6 +135,8 @@ class Wallet:
     def _validate_amount(amount: float) -> None:
         if not isinstance(amount, (int, float)) or isinstance(amount, bool):
             raise ValueError("Сумма должна быть числом")
+        if not math.isfinite(float(amount)):
+            raise ValueError("Сумма должна быть конечным числом")
         if amount <= 0:
             raise ValueError("Сумма должна быть больше нуля")
 
